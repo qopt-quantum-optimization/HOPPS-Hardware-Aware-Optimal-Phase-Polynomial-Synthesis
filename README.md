@@ -11,10 +11,27 @@
   ```
 
 ## How to Run
-Run the following scripts for different experiments:
+
+Run the following scripts to perform different experiments:
+
 ```bash
 python run_MaxCut_Random.py
+```
+
+```bash
 python run_permuted_mapped.py
+```
+
+```bash
 python run_MaxCut_Regular.py --name Qiskit
+```
+> After completing the experiment with `--name Qiskit`, rerun the script by changing `--name` to `ArPhase` and `2QAN` to complete the full set of experiments.
+
+```bash
 python run_LABS.py --name Qiskit
 ```
+> After completing the experiment with `--name Qiskit`, rerun the script by changing `--name` to `ArPhase`.
+
+## Example
+
+Please refer to `demo.ipynb` for a general usage example.
