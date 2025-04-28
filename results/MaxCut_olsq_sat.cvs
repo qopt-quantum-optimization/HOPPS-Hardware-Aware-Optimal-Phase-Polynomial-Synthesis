@@ -1,0 +1,5 @@
+name,olsq cnot,olsq depth,olsq time,C sat cnot,C sat depth,C sat time,D sat cnot,D sat depth,D sat time
+Random7_9_logical_circuit,22,17,14.92794418334961,-1,-1,-1,16,6,1.26246976852417
+Random5_7_logical_circuit,20,13,17.406917095184326,14,12,3.636270046234131,16,9,0.9458580017089844
+Random7_9_logical_circuit,22,17,14.85370397567749,-1,-1,-1,16,6,1.2796967029571533
+Random5_7_logical_circuit,20,13,17.502387046813965,14,12,3.687265157699585,16,9,0.959460973739624
