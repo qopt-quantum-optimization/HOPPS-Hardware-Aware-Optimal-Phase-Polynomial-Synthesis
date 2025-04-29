@@ -1,6 +1,6 @@
 import os
 import json
-from qiskit import QuantumCircuit
+from qiskit import QuantumCircuit, transpile
 from qiskit import qpy
 import time
 from src.util import strip_circuit, remove_gates, swap_to_cnot, get_layout_from_circuit
@@ -115,7 +115,7 @@ def main():
 
     plt.savefig('results/plot_depth.png')
 
-        data = []
+    data = []
     stripped_transpiled_bound_org_qc = remove_gates(swap_to_cnot(transpiled_bound_org_qc))
     # # Use sat optimization
     depth = [5*i+5 for i in range(7)]
@@ -204,4 +204,7 @@ def main():
     plt.savefig('results/plot_cnot.png')
 
 if __name__ == "__main__":
+    start_time = time.time()
     main()
+    end_time = time.time() 
+    print('time',end_time - start_time)
