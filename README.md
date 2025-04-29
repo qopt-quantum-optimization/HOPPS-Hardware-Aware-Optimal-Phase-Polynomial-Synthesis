@@ -10,7 +10,7 @@
   pip install -r requirements.txt
   ```
 
-## How to Run
+## Run Experiments
 
 Run the following scripts to perform different experiments:
 
