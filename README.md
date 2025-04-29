@@ -14,23 +14,33 @@
 
 Run the following scripts to perform different experiments:
 
-```bash
-python run_MaxCut_Random.py
-```
+- **For Table 2**:
+  ```bash
+  python run_MaxCut_Random.py
+  ```
 
-```bash
-python run_permuted_mapped.py
-```
+- **For Table 3**:
+  ```bash
+  python run_permuted_mapped.py
+  ```
 
-```bash
-python run_MaxCut_Regular.py --name Qiskit
-```
-> After completing the experiment with `--name Qiskit`, rerun the script by changing `--name` to `ArPhase` and `2QAN` to complete the full set of experiments.
+- **For Table 4 (first part)**:
+  ```bash
+  python run_MaxCut_Regular.py --name Qiskit
+  ```
+  > After completing the experiment with `--name Qiskit`, rerun the script with `--name ArPhase` and `--name 2QAN` to complete the full set of experiments.
 
-```bash
-python run_LABS.py --name Qiskit
-```
-> After completing the experiment with `--name Qiskit`, rerun the script by changing `--name` to `ArPhase`.
+- **For Table 4 (second part)**:
+  ```bash
+  python run_LABS.py --name Qiskit
+  ```
+  > After completing the experiment with `--name Qiskit`, rerun the script with `--name ArPhase`.
+
+- **For Figure 7**:
+  ```bash
+  python run_blocks_size.py
+  ```
+
 
 ## Example
 
