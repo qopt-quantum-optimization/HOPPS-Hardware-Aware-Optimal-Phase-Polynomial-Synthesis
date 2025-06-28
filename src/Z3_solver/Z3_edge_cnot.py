@@ -137,6 +137,41 @@ class z3_edge_cnot:
         #                 for r in range(self.bit_width):
         #                     self.solver.add(Implies(self.cnot[k][e], self.matrix_A[k][p][r] == self.matrix_A[k+1][p][r]))
     
+    def qubit_depth_assumption(self, D, K):
+        
+        assumptions = []
+        self.depth_group = []
+        for k in range(K):
+            self.depth_group.append([Bool(f"depth_group_{k}_{d}") for d in range(D)])
+
+        for k in range(K):
+            assumptions.append(AtMost(*self.depth_group[k], 1))
+            assumptions.append(AtLeast(*self.depth_group[k], 1))
+        
+        self.depth_vector = []
+        for d in range(D):
+            self.depth_vector.append([Bool(f"depth_vector_{d}_{i}") for i, (m,n) in enumerate(self.layout)])
+            for i, (m,n) in enumerate(self.layout):
+                assumptions.append(AtMost(*[And(self.cnot[k][i], self.depth_group[k][d]) for k in range(K)], 1))
+                assumptions.append(self.depth_vector[d][i] == Or([And(self.cnot[k][i], self.depth_group[k][d]) for k in range(K)]))
+            for q in range(self.bit_width):
+                connected_cnot = []
+                for i, (m,n) in enumerate(self.layout):
+                    if m == q or n == q:
+                        connected_cnot.append(self.depth_vector[d][i])
+                assumptions.append(AtMost(*connected_cnot,1))
+            
+            for k in range(K-1):
+                assumptions.append(Implies(
+                    self.depth_group[k][d], Or(self.depth_group[k+1][d], And([Not(self.depth_group[kk][d]) for kk in range(k+1, K)]))
+                    ))
+                
+                assumptions.append(Implies(
+                    self.depth_group[k][d], And([Not(self.depth_group[kk][dd]) for dd in range(d-1) for kk in range(k+1, K)])
+                    ))           
+                
+        return assumptions
+
     def solve(self, k, display=True):
         self.initialize_variables(k)
         self.constant_finial_clauses(k)
@@ -158,13 +193,28 @@ class z3_edge_cnot:
                 print(f"Elapsed time: {elapsed_time:.6f} seconds")
 
         if sat_or == "sat":
-            if display:
-                print("solution found for " + str(k))
-            model = self.solver.model()
-            return True, k, elapsed_time, model
+            print("solution found for " + str(k)+ "current depth: "+str(k))
+            self.model = self.solver.model()
+            count_depth = k
+            if count_depth<=1:
+                self.model = self.solver.model()
+                return True, k, elapsed_time, self.model
+            for i in range(count_depth, 0, -1):
+                sat_or_cnot = str(self.solver.check(self.qubit_depth_assumption(i,k))) 
+                if sat_or_cnot != "sat":
+                    print("Try " +str(i)+ " depth, fail")
+                    self.solver.check(self.qubit_depth_assumption(i+1, k))
+                    self.model = self.solver.model()
+                    return True, k, elapsed_time, self.model
+                else:
+                    self.model = self.solver.model()
+                    print("Try " +str(i)+ " depth, success")
+            print('input circuit is idenity unitary')
+            # self.solver.check(self.qubit_depth_assumption(4, k))
+            # self.model = self.solver.model()
+            return False, k, elapsed_time, None
         else:
-            if display:
-                print("No solution found for " + str(k))
+            print("No solution found for " + str(k))
             return False, k, elapsed_time, None
         
     def perfer_k_cnot_clauses(self, k, qubits):
