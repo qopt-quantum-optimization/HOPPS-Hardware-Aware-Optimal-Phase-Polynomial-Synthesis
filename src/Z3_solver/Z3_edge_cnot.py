@@ -190,10 +190,11 @@ class z3_edge_cnot:
         elapsed_time = end_time - start_time
 
         if display:
-                print(f"Elapsed time: {elapsed_time:.6f} seconds")
+            print(f"Elapsed time: {elapsed_time:.6f} seconds")
 
         if sat_or == "sat":
-            print("solution found for " + str(k)+ "current depth: "+str(k))
+            if display:
+                print("solution found for " + str(k)+ "current depth: "+str(k))
             self.model = self.solver.model()
             count_depth = k
             if count_depth<=1:
@@ -202,19 +203,22 @@ class z3_edge_cnot:
             for i in range(count_depth, 0, -1):
                 sat_or_cnot = str(self.solver.check(self.qubit_depth_assumption(i,k))) 
                 if sat_or_cnot != "sat":
-                    print("Try " +str(i)+ " depth, fail")
+                    if display:
+                        print("Try " +str(i)+ " depth, fail")
                     self.solver.check(self.qubit_depth_assumption(i+1, k))
                     self.model = self.solver.model()
                     return True, k, elapsed_time, self.model
                 else:
                     self.model = self.solver.model()
-                    print("Try " +str(i)+ " depth, success")
+                    if display:
+                       print("Try " +str(i)+ " depth, success")
             print('input circuit is idenity unitary')
             # self.solver.check(self.qubit_depth_assumption(4, k))
             # self.model = self.solver.model()
             return False, k, elapsed_time, None
         else:
-            print("No solution found for " + str(k))
+            if display:
+                print("No solution found for " + str(k))
             return False, k, elapsed_time, None
         
     def perfer_k_cnot_clauses(self, k, qubits):
