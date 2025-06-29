@@ -8,6 +8,88 @@ from collections import deque, defaultdict
 import numpy as np
 from math import isnan
 
+from concurrent.futures import ThreadPoolExecutor, as_completed, ProcessPoolExecutor
+
+def block_opt_qaoa_parallel(recovered_transpiled_bound_org_qc,coupling_map,cnot_or_depth = 'cnot',max_depth = 0,block_size=5, max_k = 25, method = 'Quick', display = False):
+    if max_depth>0:
+        partioned_bq_qc = bqskit_depth_parition(recovered_transpiled_bound_org_qc, block_size, max_depth, method)
+    else:
+        partioned_bq_qc = bqskit_parition(recovered_transpiled_bound_org_qc, block_size, method)
+
+    qubits = partioned_bq_qc.qubits
+    qubit_gate = {i: None for i in range(len(qubits))}
+    gate_qubits = {i:[] for i, g in enumerate(partioned_bq_qc.data)}
+    child_gates = {i:{} for i, g in enumerate(partioned_bq_qc.data)}
+
+    for i, gate in enumerate(partioned_bq_qc.data):
+        gate_qubits_index = [qubits.index(q) for q in gate.qubits]
+        gate_qubits[i] = gate_qubits_index
+        for id in gate_qubits_index:
+            if qubit_gate[id] is not None:
+                if i not in child_gates[qubit_gate[id]]:
+                    child_gates[qubit_gate[id]][i] = [id]
+                else:
+                    child_gates[qubit_gate[id]][i].append(id)
+            qubit_gate[id] = i
+
+    graph = DependencyGraph()
+    for node in child_gates:
+        for success_node in child_gates[node]:
+            graph.add_dependency(node, success_node)
+    layers = graph.get_layers()
+    list_qubits = partioned_bq_qc.qubits
+
+    def solve_each_block(l):
+        # Get qubit of block
+        list_gate_qubits = [list_qubits.index(q) for q in partioned_bq_qc.data[l].qubits]
+        # Get subcoupling map
+        logical_subsubcoupling_map = coupling_map_physical_index_to_logical_index(get_subcoupling_map(coupling_map, list_gate_qubits), list_gate_qubits)
+        # Get block circuit
+        decomposed_block = partioned_bq_qc.data[l].operation.definition
+        # Get input parity from block circuit
+        input_parity = [[True if i == j else False for j in range(len(list_gate_qubits))] for i in range(len(list_gate_qubits))]
+        # Get output parity from block circuit
+        output_parity, terms, params = extract_parity_from_circuit_custom(decomposed_block, custom_parity=input_parity)
+
+        optimized_block, _ = z3_sat_solve_free_output(decomposed_block.num_qubits, 
+                                                        logical_subsubcoupling_map, 
+                                                        terms, 
+                                                        input_parity, 
+                                                        output_parity, 
+                                                        params, 
+                                                        cnot_or_depth=cnot_or_depth, 
+                                                        max_k = max_k,
+                                                        display = display)
+
+        return optimized_block
+    
+    results = []
+    with ProcessPoolExecutor(max_workers=4) as executor:
+        futures = [executor.submit(solve_each_block(l)) for l in layer for i_l, layer in enumerate(layers)]
+        for future in as_completed(futures):
+            results.append(future.result())
+    
+    block_index = 0
+    opt_qc =  QuantumCircuit(recovered_transpiled_bound_org_qc.qubits)
+    for i_l, layer in enumerate(layers):
+        # print(f"Layer {i+1}: {layer}")
+        for l in layer:
+            if display:
+                print(f"Layer {i_l}: {layer}", l)
+
+            decomposed_block = partioned_bq_qc.data[l].operation.definition
+            list_gate_qubits = [list_qubits.index(q) for q in partioned_bq_qc.data[l].qubits]
+            optimized_block = results[block_index]
+
+            block_index += 1
+
+            if decomposed_block.count_ops()['cx'] <= optimized_block.count_ops()['cx']:
+                opt_qc = opt_qc.compose(decomposed_block, list_gate_qubits)
+            else:
+                opt_qc = opt_qc.compose(optimized_block, list_gate_qubits)
+
+    return opt_qc
+
 def block_opt_general(qc,coupling_map,cnot_or_depth = 'cnot',max_depth = 0,block_size=10, max_k=25, method = 'phasepoly', display = False):
     final_qc =  general_paritioner(qc, method)
     opt_qc =  QuantumCircuit(final_qc.qubits, final_qc.clbits)
