@@ -23,6 +23,7 @@ from bqskit.ir.lang.qasm2.qasm2 import OPENQASM2Language
 from bqskit.passes.partitioning.quick import QuickPartitioner
 from bqskit.passes.partitioning.scan import ScanPartitioner
 from bqskit.passes.partitioning.greedy import GreedyPartitioner
+from bqskit.passes.partitioning.cluster import ClusteringPartitioner
 from bqskit.ext.qiskit import bqskit_to_qiskit, qiskit_to_bqskit
 
 def bqskit_parition(qc, block_size, method = "Quick"):
@@ -30,6 +31,9 @@ def bqskit_parition(qc, block_size, method = "Quick"):
     compiler = Compiler()
     if method == "Quick":
         circuit = compiler.compile(circuit, [QuickPartitioner(block_size)])
+        return bqskit_to_qiskit(circuit)
+    elif method == "Cluster":
+        circuit = compiler.compile(circuit, [ClusteringPartitioner(block_size)])
         return bqskit_to_qiskit(circuit)
     elif method == 'scan':
         circuit = compiler.compile(circuit, [ScanPartitioner(block_size)])
