@@ -11,7 +11,7 @@ from math import isnan
 from concurrent.futures import ThreadPoolExecutor, as_completed, ProcessPoolExecutor
 
 def block_opt_qaoa_parallel(recovered_transpiled_bound_org_qc,coupling_map,cnot_or_depth = 'cnot',max_depth = 0,block_size=5, max_k = 25, method = 'Quick', display = False):
-    if max_depth>0:
+    if max_depth>0 and method != 'Cluster':
         partioned_bq_qc = bqskit_depth_parition(recovered_transpiled_bound_org_qc, block_size, max_depth, method)
     else:
         partioned_bq_qc = bqskit_parition(recovered_transpiled_bound_org_qc, block_size, method)
@@ -65,9 +65,9 @@ def block_opt_qaoa_parallel(recovered_transpiled_bound_org_qc,coupling_map,cnot_
     
     results = []
     with ProcessPoolExecutor(max_workers=4) as executor:
-        futures = [executor.submit(solve_each_block(l)) for l in layer for i_l, layer in enumerate(layers)]
+        futures = [executor.submit(solve_each_block(l)) for i_l, layer in enumerate(layers) for l in layer]
         for future in as_completed(futures):
-            results.append(future.result())
+            results.append(future.result)
     
     block_index = 0
     opt_qc =  QuantumCircuit(recovered_transpiled_bound_org_qc.qubits)
@@ -82,9 +82,12 @@ def block_opt_qaoa_parallel(recovered_transpiled_bound_org_qc,coupling_map,cnot_
             optimized_block = results[block_index]
 
             block_index += 1
-
-            if decomposed_block.count_ops()['cx'] <= optimized_block.count_ops()['cx']:
-                opt_qc = opt_qc.compose(decomposed_block, list_gate_qubits)
+            
+            if 'cx' in decomposed_block.count_ops():
+                if decomposed_block.count_ops()['cx'] <= optimized_block.count_ops()['cx']:
+                    opt_qc = opt_qc.compose(decomposed_block, list_gate_qubits)
+                else:
+                    opt_qc = opt_qc.compose(optimized_block, list_gate_qubits)
             else:
                 opt_qc = opt_qc.compose(optimized_block, list_gate_qubits)
 
