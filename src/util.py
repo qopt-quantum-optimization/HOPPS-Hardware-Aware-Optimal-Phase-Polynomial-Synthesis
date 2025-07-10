@@ -113,3 +113,27 @@ def extract_parity_from_circuit_custom(qc, inverse = False, custom_parity = None
         #     terms.append(parity_matrix[parity_index])
         #     params.append(*q.params)
     return parity_matrix, terms, params
+
+def count_gate(qc: QuantumCircuit):
+    count_gate_dict = {q: 0 for q in qc.qubits}
+    for gate in qc.data:
+        if gate.name != 'barrier' and gate.name != 'measure':
+            for qubit in gate.qubits:
+                count_gate_dict[qubit]+=1
+    return count_gate_dict
+
+def remove_unused_wire(qc: QuantumCircuit):
+    gate_count = count_gate(qc)
+    org_qubit_to_new_index_mapping = {}
+    i = 0
+    for qubit, count in gate_count.items():
+        if count != 0:
+            org_qubit_to_new_index_mapping[qc.qubits.index(qubit)] = i
+            i+=1
+
+    new_qc = QuantumCircuit(i, i)
+    for gate in qc.data:
+        if gate.operation.name != 'barrier' and gate.name != 'measure':
+            new_qc.append(gate.operation, [org_qubit_to_new_index_mapping[qc.qubits.index(q)] for q in gate.qubits], gate.clbits)
+
+    return new_qc

@@ -31,15 +31,18 @@ def bqskit_parition(qc, block_size, method = "Quick"):
     compiler = Compiler()
     if method == "Quick":
         circuit = compiler.compile(circuit, [QuickPartitioner(block_size)])
+        compiler.close()
         return bqskit_to_qiskit(circuit)
     elif method == "Cluster":
         circuit = compiler.compile(circuit, [ClusteringPartitioner(block_size)])
+        compiler.close()
         return bqskit_to_qiskit(circuit)
     elif method == 'scan':
         circuit = compiler.compile(circuit, [ScanPartitioner(block_size)])
         return bqskit_to_qiskit(circuit)
     elif method == 'Greedy':
         circuit = compiler.compile(circuit, [GreedyPartitioner(block_size)])
+        compiler.close()
         return bqskit_to_qiskit(circuit)
     
 def bqskit_depth_parition(qc, block_size, depth, method = "Quick"):
