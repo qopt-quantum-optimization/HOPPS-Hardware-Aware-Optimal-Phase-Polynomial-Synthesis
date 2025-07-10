@@ -3,3 +3,6 @@ test.ipynb
 test2.ipynb
 comparing_bqskit.ipynb
 draw.ipynb
+src/Z3_solver/Z3_Cnot_T.py
+src/Z3_solver/Z3_matrix_depth.py
+src/Z3_solver/Z3_vector_cnot.py
