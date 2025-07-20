@@ -1,6 +1,7 @@
 Z3_Phase_test2/
 test.ipynb
 test2.ipynb
+test3.ipynb
 comparing_bqskit.ipynb
 draw.ipynb
 src/Z3_solver/Z3_Cnot_T.py
