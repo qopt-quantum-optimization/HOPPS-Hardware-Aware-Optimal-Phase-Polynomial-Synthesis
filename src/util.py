@@ -1,5 +1,19 @@
 import numpy as np
-from qiskit import QuantumCircuit
+from qiskit import QuantumCircuit, qpy
+
+def read_circuit_qiskit(file_name):
+    if file_name[-4:] == 'qasm':
+        transpiled_bound_org_qc = QuantumCircuit.from_qasm_file(file_name)
+        circuit_name = file_name[-30:-12]
+
+    elif file_name[-3:] == 'qpy':
+        with open(file_name, "rb") as f:
+            transpiled_bound_org_qc_list = qpy.load(f)
+            transpiled_bound_org_qc = transpiled_bound_org_qc_list[0]
+            circuit_name = file_name[-29:-11]
+
+    return transpiled_bound_org_qc, circuit_name
+
 def remove_gates(qc, gate_names=["h", "rx","measure"]):
     """
     Remove specific gates from a given QuantumCircuit.
@@ -36,6 +50,15 @@ def strip_circuit(qc):
             new_qc.cx(gate.qubits[1], gate.qubits[0])
             new_qc.cx(gate.qubits[0], gate.qubits[1])
         elif len(gate.qubits) == 2:
+            new_qc.append(gate)
+    return new_qc
+
+def strip_qaoa_circuit(qc):
+    blocked_gates = {'cx', 's', 'sdg', 't', 'tdg', 'rz','swap', 'z'}
+    new_qc = QuantumCircuit(qc.num_qubits, qc.num_clbits)
+
+    for gate in qc.data:
+        if gate.name in blocked_gates:
             new_qc.append(gate)
     return new_qc
 

@@ -145,32 +145,6 @@ class z3_edge_depth:
                 cnots.append(self.cnot[k][e])
         return AtMost(*cnots, n)
     
-    def solve_cnot(self, k, i, display=True):
-        self.initialize_variables(k)
-        self.constant_finial_clauses(k)
-        self.constant_initial_clauses()
-        if self.terms:
-           self.term_check_clauses(k)
-        self.validity_clauses(k)
-        self.dependency_clauses(k)
-        if self.rep is not False:
-            self.depend_finial_clauses(k, self.rep)
-        
-        start_time = time.time()
-        sat_or = str(self.solver.check(self.num_cnot_assumption(i, k)))
-        end_time = time.time() 
-        
-        elapsed_time = end_time - start_time
-
-        if sat_or == "sat":
-            if display:
-                print("solution found for " + str(k)+ "current cnot: "+str(self.count_cnot(k)))
-            return True, k, i,elapsed_time, None
-        else:
-            if display:
-                print("No solution found for " + str(k))
-            return False, k, i,elapsed_time, None
-    
     def solve(self, k, display=True):
         self.initialize_variables(k)
         self.constant_finial_clauses(k)
@@ -199,12 +173,11 @@ class z3_edge_depth:
                 self.model = self.solver.model()
                 return True, k, elapsed_time, self.model
             for i in range(count_cnot, -1, -1):
-                sat_or_cnot = str(self.solver.check(self.num_cnot_assumption(i, k))) 
+                self.solver.add(self.num_cnot_assumption(i, k))
+                sat_or_cnot = str(self.solver.check()) 
                 if sat_or_cnot != "sat":
                     if display:
                         print("Try " +str(i)+ " cnots, fail")
-                    self.solver.check(self.num_cnot_assumption(i+1, k))
-                    self.model = self.solver.model()
                     return True, k, elapsed_time, self.model
                 else:
                     self.model = self.solver.model()

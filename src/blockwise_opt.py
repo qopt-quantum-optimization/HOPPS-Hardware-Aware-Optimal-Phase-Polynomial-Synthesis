@@ -93,33 +93,77 @@ def block_opt_qaoa_parallel(recovered_transpiled_bound_org_qc,coupling_map,cnot_
     input_args = [(l, decomposed_block, list_gate_qubits, coupling_map, max_k, cnot_or_depth) for l, (decomposed_block, list_gate_qubits) in enumerate(zip(blocks_circuit,blocks_qubits))]
     
     if cnot_or_depth == 'qsearch':
-        # compiler = Compiler()
-        # tasks = []
-        # # Submit all jobs
-        # for l, decomposed_block, list_gate_qubits, coupling_map, max_k, cnot_or_depth in input_args:
-        #     circuit = qiskit_to_bqskit(decomposed_block)
-        #     logical_subsubcoupling_map = coupling_map_physical_index_to_logical_index(get_subcoupling_map(coupling_map, list_gate_qubits), list_gate_qubits)
-        #     model = MachineModel(len(list_gate_qubits), logical_subsubcoupling_map)
-        #     passes = [
-        #         SetModelPass(model),
-        #         QSearchSynthesisPass()
-        #     ]
-        #     task = compiler.submit(circuit, passes)
-        #     tasks.append(task)
+        compiler = Compiler()
+        tasks = []
+        # Submit all jobs
+        for l, decomposed_block, list_gate_qubits, coupling_map, max_k, cnot_or_depth in input_args:
+            circuit = qiskit_to_bqskit(decomposed_block)
+            logical_subsubcoupling_map = coupling_map_physical_index_to_logical_index(get_subcoupling_map(coupling_map, list_gate_qubits), list_gate_qubits)
+            model = MachineModel(len(list_gate_qubits), logical_subsubcoupling_map)
+            passes = [
+                SetModelPass(model),
+                QSearchSynthesisPass()
+            ]
+            task = compiler.submit(circuit, passes) # Use Bqskit Default parallel
+            tasks.append(task)
 
-        # # Collect all results
-        # results = []
-        # for i, task in enumerate(tasks):
-        #     result = compiler.result(task)
-        #     results.append(bqskit_to_qiskit(result))
+        # Collect all results
+        results = []
+        for i, task in enumerate(tasks):
+            result = compiler.result(task)
+            results.append(bqskit_to_qiskit(result))
+        # results = [solve_each_block_QSearch(*input_arg)[1] for input_arg in input_args]
+    else:
+        with Pool(processes=8) as pool:
+            unorder_results = pool.starmap(solve_each_block, input_args)
+        
+        unorder_results.sort(key=lambda x: x[0])
+        results = [r for _, r in unorder_results]
+    
+    # results = [solve_each_block(decomposed_block, list_gate_qubits) for decomposed_block, list_gate_qubits in zip(blocks_circuit,blocks_qubits ) ]
+
+    
+    block_index = 0
+    opt_qc =  QuantumCircuit(recovered_transpiled_bound_org_qc.qubits)
+    for i, gate in enumerate(partioned_bq_qc.data):
+        if gate.name[:7] == 'circuit':
+            decomposed_block = gate.operation.definition
+            list_gate_qubits = [qubits.index(q) for q in gate.qubits]
+            optimized_block = results[block_index]
+
+            block_index += 1
+
+            if decomposed_block.count_ops()['cx'] <= optimized_block.count_ops()['cx']:
+                opt_qc = opt_qc.compose(decomposed_block, list_gate_qubits)
+            else:
+                opt_qc = opt_qc.compose(optimized_block, list_gate_qubits)
+        else:
+            opt_qc.append(gate)
+
+    return opt_qc
+
+def block_opt_qaoa(recovered_transpiled_bound_org_qc,coupling_map,cnot_or_depth = 'cnot',max_depth = 0,block_size=5, max_k = 25, method = 'Quick', display = False):
+    if max_depth>0 and method != 'Cluster':
+        partioned_bq_qc = bqskit_depth_parition(recovered_transpiled_bound_org_qc, block_size, max_depth, method)
+    else:
+        partioned_bq_qc = bqskit_parition(recovered_transpiled_bound_org_qc, block_size, method)
+
+    qubits = partioned_bq_qc.qubits
+
+    blocks_circuit = []
+    blocks_qubits = []
+    for i, gate in enumerate(partioned_bq_qc.data):
+        if gate.name[:7] == 'circuit':
+            blocks_qubits.append([qubits.index(q) for q in gate.qubits])
+            blocks_circuit.append(gate.operation.definition)
+    
+    results = []
+    
+    input_args = [(l, decomposed_block, list_gate_qubits, coupling_map, max_k, cnot_or_depth) for l, (decomposed_block, list_gate_qubits) in enumerate(zip(blocks_circuit,blocks_qubits))]
+    
+    if cnot_or_depth == 'qsearch':
         results = [solve_each_block_QSearch(*input_arg)[1] for input_arg in input_args]
     else:
-        # with Pool(processes=8) as pool:
-        #     unorder_results = pool.starmap(solve_each_block, input_args)
-        
-        # unorder_results.sort(key=lambda x: x[0])
-        # results = [r for _, r in unorder_results]
-    
         results = [solve_each_block(*input_arg)[1] for input_arg in input_args]
 
     
@@ -206,73 +250,73 @@ def block_opt_general(qc,coupling_map,cnot_or_depth = 'cnot',max_depth = 0,block
 
     return opt_qc
 
-def block_opt_qaoa(recovered_transpiled_bound_org_qc,coupling_map,cnot_or_depth = 'cnot',max_depth = 0,block_size=5, max_k = 25, method = 'Quick', display = False):
+# def block_opt_qaoa(recovered_transpiled_bound_org_qc,coupling_map,cnot_or_depth = 'cnot',max_depth = 0,block_size=5, max_k = 25, method = 'Quick', display = False):
 
-    if max_depth>0:
-        partioned_bq_qc = bqskit_depth_parition(recovered_transpiled_bound_org_qc, block_size, max_depth, method)
-    else:
-        partioned_bq_qc = bqskit_parition(recovered_transpiled_bound_org_qc, block_size, method)
+#     if max_depth>0:
+#         partioned_bq_qc = bqskit_depth_parition(recovered_transpiled_bound_org_qc, block_size, max_depth, method)
+#     else:
+#         partioned_bq_qc = bqskit_parition(recovered_transpiled_bound_org_qc, block_size, method)
 
 
-    qubits = partioned_bq_qc.qubits
-    qubit_gate = {i: None for i in range(len(qubits))}
-    gate_qubits = {i:[] for i, g in enumerate(partioned_bq_qc.data)}
-    child_gates = {i:{} for i, g in enumerate(partioned_bq_qc.data)}
+#     qubits = partioned_bq_qc.qubits
+#     qubit_gate = {i: None for i in range(len(qubits))}
+#     gate_qubits = {i:[] for i, g in enumerate(partioned_bq_qc.data)}
+#     child_gates = {i:{} for i, g in enumerate(partioned_bq_qc.data)}
 
-    for i, gate in enumerate(partioned_bq_qc.data):
-        gate_qubits_index = [qubits.index(q) for q in gate.qubits]
-        gate_qubits[i] = gate_qubits_index
-        for id in gate_qubits_index:
-            if qubit_gate[id] is not None:
-                if i not in child_gates[qubit_gate[id]]:
-                    child_gates[qubit_gate[id]][i] = [id]
-                else:
-                    child_gates[qubit_gate[id]][i].append(id)
-            qubit_gate[id] = i
+#     for i, gate in enumerate(partioned_bq_qc.data):
+#         gate_qubits_index = [qubits.index(q) for q in gate.qubits]
+#         gate_qubits[i] = gate_qubits_index
+#         for id in gate_qubits_index:
+#             if qubit_gate[id] is not None:
+#                 if i not in child_gates[qubit_gate[id]]:
+#                     child_gates[qubit_gate[id]][i] = [id]
+#                 else:
+#                     child_gates[qubit_gate[id]][i].append(id)
+#             qubit_gate[id] = i
 
-    graph = DependencyGraph()
-    for node in child_gates:
-        for success_node in child_gates[node]:
-            graph.add_dependency(node, success_node)
-    layers = graph.get_layers()
+#     graph = DependencyGraph()
+#     for node in child_gates:
+#         for success_node in child_gates[node]:
+#             graph.add_dependency(node, success_node)
+#     layers = graph.get_layers()
 
-    # from scr.Circuit_Parity.circuit_to_parity import extract_parity_from_circuit
-    list_qubits = partioned_bq_qc.qubits
-    opt_qc =  QuantumCircuit(recovered_transpiled_bound_org_qc.qubits)
+#     # from scr.Circuit_Parity.circuit_to_parity import extract_parity_from_circuit
+#     list_qubits = partioned_bq_qc.qubits
+#     opt_qc =  QuantumCircuit(recovered_transpiled_bound_org_qc.qubits)
 
-    for i_l, layer in enumerate(layers):
-        # print(f"Layer {i+1}: {layer}")
-        for l in layer:
-            if display:
-                print(f"Layer {i_l}: {layer}", l)
-            list_gate_qubits = [list_qubits.index(q) for q in partioned_bq_qc.data[l].qubits]
+#     for i_l, layer in enumerate(layers):
+#         # print(f"Layer {i+1}: {layer}")
+#         for l in layer:
+#             if display:
+#                 print(f"Layer {i_l}: {layer}", l)
+#             list_gate_qubits = [list_qubits.index(q) for q in partioned_bq_qc.data[l].qubits]
 
-            # Get coupling map
-            logical_subsubcoupling_map = coupling_map_physical_index_to_logical_index(get_subcoupling_map(coupling_map, list_gate_qubits), list_gate_qubits)
+#             # Get coupling map
+#             logical_subsubcoupling_map = coupling_map_physical_index_to_logical_index(get_subcoupling_map(coupling_map, list_gate_qubits), list_gate_qubits)
 
-            # block circuit
-            decomposed_block = partioned_bq_qc.data[l].operation.definition
+#             # block circuit
+#             decomposed_block = partioned_bq_qc.data[l].operation.definition
 
-            input_parity = [[True if i == j else False for j in range(len(list_gate_qubits))] for i in range(len(list_gate_qubits))]
+#             input_parity = [[True if i == j else False for j in range(len(list_gate_qubits))] for i in range(len(list_gate_qubits))]
 
-            output_parity, terms, params = extract_parity_from_circuit_custom(decomposed_block, custom_parity=input_parity)
+#             output_parity, terms, params = extract_parity_from_circuit_custom(decomposed_block, custom_parity=input_parity)
 
-            optimized_block, _ = z3_sat_solve_free_output(decomposed_block.num_qubits, 
-                                                          logical_subsubcoupling_map, 
-                                                          terms, 
-                                                          input_parity, 
-                                                          output_parity, 
-                                                          params, 
-                                                          cnot_or_depth=cnot_or_depth, 
-                                                          max_k = max_k,
-                                                          display = display)
+#             optimized_block, _ = z3_sat_solve_free_output(decomposed_block.num_qubits, 
+#                                                           logical_subsubcoupling_map, 
+#                                                           terms, 
+#                                                           input_parity, 
+#                                                           output_parity, 
+#                                                           params, 
+#                                                           cnot_or_depth=cnot_or_depth, 
+#                                                           max_k = max_k,
+#                                                           display = display)
 
-            if decomposed_block.count_ops()['cx'] <= optimized_block.count_ops()['cx']:
-                opt_qc = opt_qc.compose(decomposed_block, list_gate_qubits)
-            else:
-                opt_qc = opt_qc.compose(optimized_block, list_gate_qubits)
+#             if decomposed_block.count_ops()['cx'] <= optimized_block.count_ops()['cx']:
+#                 opt_qc = opt_qc.compose(decomposed_block, list_gate_qubits)
+#             else:
+#                 opt_qc = opt_qc.compose(optimized_block, list_gate_qubits)
 
-    return opt_qc
+#     return opt_qc
 
 def mod2_matrix(matrix):
     """Convert all entries to mod 2"""

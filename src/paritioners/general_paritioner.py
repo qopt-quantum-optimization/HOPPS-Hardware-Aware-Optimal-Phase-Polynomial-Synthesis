@@ -12,7 +12,8 @@ def general_paritioner(qc, circuit_type = 'phasepoly'):
     dag = circuit_to_dag(qc)
     new_dag = DAGCircuit()
     new_dag.add_qreg(qc.qregs[0])
-    new_dag.add_creg(qc.cregs[0])
+    if qc.cregs:
+        new_dag.add_creg(qc.cregs[0])
 
     blocks = {}
     qubit_track = {q: -1 for q in qc.qubits}
