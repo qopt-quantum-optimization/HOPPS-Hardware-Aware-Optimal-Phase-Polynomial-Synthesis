@@ -27,6 +27,7 @@ from bqskit.passes.partitioning.cluster import ClusteringPartitioner
 from bqskit.ext.qiskit import bqskit_to_qiskit, qiskit_to_bqskit
 
 def bqskit_parition(qc, block_size, method = "Quick"):
+    """Using bqskit to parition a circuit."""
     circuit = qiskit_to_bqskit(qc)
     compiler = Compiler()
     if method == "Quick":
@@ -43,6 +44,11 @@ def bqskit_parition(qc, block_size, method = "Quick"):
         return bqskit_to_qiskit(circuit)
     
 def bqskit_depth_parition(qc, block_size, depth, method = "Quick"):
+    """We use BQSKit to partition a circuit. 
+    Each block should not be too large, as HOPPS may take a long time to solve it. 
+    Therefore, we set a maximum depth, representing the highest allowable CNOT depth for each block.
+    If a block exceeds the maximum depth, it must be split so that each resulting block satisfies the depth constraint. 
+    Since the maximum depth equals the number of CNOT gates in a block, we can simply count the number of CNOTs to enforce this constraint."""
     _partioned_bq_qc = bqskit_parition(qc, block_size, method = method)
     circuit = cut_partioned_qc_in_depth(_partioned_bq_qc, depth)
     return circuit

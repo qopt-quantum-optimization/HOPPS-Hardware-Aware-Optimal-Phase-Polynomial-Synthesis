@@ -3,6 +3,11 @@ from qiskit.converters import circuit_to_dag, dag_to_circuit
 from qiskit.dagcircuit import DAGCircuit
 
 def general_paritioner(qc, circuit_type = 'phasepoly'):
+    """Extract all the {CNOT, Rz} blocks from the circuit by scanning it from beginning to end.
+       Each block stops expanding when it encounters a gate that does not belong to {CNOT, Rz}. 
+       circuit_type: phasepoly -> {CNOT, Rz} blocks
+                     cnot -> {CNOT} blocks
+    """
     if circuit_type == 'phasepoly':
         blocked_gates = {'cx', 's', 'sdg', 't', 'tdg', 'rz','swap', 'z'}
     elif circuit_type == 'cnot':
@@ -90,7 +95,4 @@ def general_paritioner(qc, circuit_type = 'phasepoly'):
 
     final_qc = dag_to_circuit(new_dag)
     return final_qc
-
-# decomposed_final_qc = final_qc.decompose()
-# decomposed_final_qc.draw()
             

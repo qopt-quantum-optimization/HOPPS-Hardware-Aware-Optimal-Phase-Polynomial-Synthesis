@@ -1,5 +1,8 @@
 import numpy as np
 from qiskit import QuantumCircuit, qpy
+import json
+from qiskit import transpile
+from qiskit.transpiler import CouplingMap
 
 def read_circuit_qiskit(file_name):
     if file_name[-4:] == 'qasm':
@@ -159,4 +162,63 @@ def remove_unused_wire(qc: QuantumCircuit):
         if gate.operation.name != 'barrier' and gate.name != 'measure':
             new_qc.append(gate.operation, [org_qubit_to_new_index_mapping[qc.qubits.index(q)] for q in gate.qubits], gate.clbits)
 
+    return new_qc
+
+def qiskit_initial_layout(qc, backend):
+    if backend == "melbourne":
+        with open("Coupling_maps/melbourne.json", "r") as f:
+            coupling_map = json.load(f)
+    elif backend == "kyiv":
+        with open("Coupling_maps/kyiv.json", "r") as f:
+            coupling_map = json.load(f)
+    
+    coupling = CouplingMap(couplinglist=coupling_map)
+    transpiled_qc = transpile(
+        qc,
+        coupling_map=coupling,
+        optimization_level=3
+    )
+
+    physical_layout = []
+    for i, (qubit, index) in enumerate(transpiled_qc.layout.initial_layout.get_virtual_bits().items()):
+        if index!=0:
+            physical_layout.append(index)
+        else:
+            break
+
+    sub_coupling_maps = []
+    for edge in coupling:
+        if edge[0] in physical_layout and edge[1] in physical_layout:
+            sub_coupling_maps.append((physical_layout.index(edge[0]),physical_layout.index(edge[1])))
+    return sub_coupling_maps
+
+def two_direct_coupling_map(coupling_map):
+    td_coupling_map = []
+    for edge in coupling_map:
+        if edge not in td_coupling_map:
+            td_coupling_map.append(edge)
+        if edge[::-1] not in td_coupling_map:
+            td_coupling_map.append(edge[::-1])
+    return td_coupling_map
+
+def qiskit_mapped_circuit(qc, coupling_map):
+    td_coupling_map = two_direct_coupling_map(coupling_map)
+    coupling = CouplingMap(couplinglist=td_coupling_map)
+    basis_gates = ['id', 'rz', 'cx', 'reset','h','swap', 'rx']
+    transpiled_qc = transpile(
+        qc,
+        basis_gates = basis_gates,
+        routing_method="sabre",
+        coupling_map=coupling,
+        optimization_level=1,
+    )
+    return transpiled_qc
+
+def recover_qaoa_circuit(qc, rx_params):
+    new_qc = QuantumCircuit(qc.num_qubits)
+    for i in range(qc.num_qubits):
+        new_qc.h(i)
+    new_qc = new_qc.compose(qc)
+    for i in range(qc.num_qubits):
+        new_qc.rx(rx_params, i)
     return new_qc
