@@ -1,3 +1,21 @@
+'''Copyright © 2025 UChicago Argonne, LLC and Case Western Reserve University All right reserved
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at:
+
+    https://github.com/qopt-quantum-optimization/HOPPS-Hardware-Aware-Optimal-Phase-Polynomial-Synthesis/blob/main/LICENSE.md
+
+Unless required by applicable law or
+agreed to in writing, Licensor provides the Work (and each
+Contributor provides its Contributions) on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+implied, including, without limitation, any warranties or conditions
+of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+PARTICULAR PURPOSE. You are solely responsible for determining the
+appropriateness of using or redistributing the Work and assume any
+risks associated with Your exercise of permissions under this License.'''
+
 from z3 import Solver, Bool, Or, And, Sum, Not, Xor, set_param, Implies, AtLeast, AtMost, sat, Optimize, simplify
 from functools import reduce
 from qiskit import QuantumCircuit
@@ -125,17 +143,6 @@ class z3_edge_cnot:
                         connected_cnot.append(self.cnot[k][i])  
                 for r in range(self.bit_width):
                     self.solver.add(Implies(Not(Or(connected_cnot)), self.matrix_A[k][q][r] == self.matrix_A[k+1][q][r]))
-
-        # for k in range(K):
-        #     for e , (i,j) in  enumerate(self.layout):
-        #         for p in range(self.bit_width):
-        #             if p == j:
-        #                 for r in range(self.bit_width):
-        #                     self.solver.add(Implies(And(self.cnot[k][e], self.matrix_A[k][i][r]), self.matrix_A[k][j][r] != self.matrix_A[k+1][j][r] ))
-        #                     self.solver.add(Implies(And(self.cnot[k][e], Not(self.matrix_A[k][i][r])), self.matrix_A[k][j][r] == self.matrix_A[k+1][j][r] ))
-        #             else:
-        #                 for r in range(self.bit_width):
-        #                     self.solver.add(Implies(self.cnot[k][e], self.matrix_A[k][p][r] == self.matrix_A[k+1][p][r]))
 
     def circuit_depth_encoding(self, K):
         

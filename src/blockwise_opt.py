@@ -1,3 +1,21 @@
+'''Copyright © 2025 UChicago Argonne, LLC and Case Western Reserve University All right reserved
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at:
+
+    https://github.com/qopt-quantum-optimization/HOPPS-Hardware-Aware-Optimal-Phase-Polynomial-Synthesis/blob/main/LICENSE.md
+
+Unless required by applicable law or
+agreed to in writing, Licensor provides the Work (and each
+Contributor provides its Contributions) on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+implied, including, without limitation, any warranties or conditions
+of TITLE, NON-INFRINGEMENT, MERCHANTABILITY, or FITNESS FOR A
+PARTICULAR PURPOSE. You are solely responsible for determining the
+appropriateness of using or redistributing the Work and assume any
+risks associated with Your exercise of permissions under this License.'''
+
 from .paritioners import bqskit_depth_parition, general_paritioner, bqskit_parition
 from .blocks_structure import DependencyGraph
 from .util import coupling_map_physical_index_to_logical_index, get_subcoupling_map, extract_parity_from_circuit_custom
